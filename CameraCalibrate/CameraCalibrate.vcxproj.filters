@@ -42,6 +42,12 @@
     <ClInclude Include="Cali_options.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Stero_cali_diag.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Transcode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CameraCalibrate.cpp">
@@ -60,6 +66,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Cali_options.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Stero_cali_diag.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Transcode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

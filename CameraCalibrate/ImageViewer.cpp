@@ -169,9 +169,17 @@ void ImageViewer::OnRButtonUp(UINT nFlags, CPoint point)
 void ImageViewer::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
-	int x = (point.x - Draw_aera.left) / zoom_factor;
-	int y = (point.y - Draw_aera.top) / zoom_factor;
-	m_points.push_back(CPoint(x, y));
+	if (pos_point == -1) {
+		int x = (point.x - Draw_aera.left) / zoom_factor;
+		int y = (point.y - Draw_aera.top) / zoom_factor;
+		m_points.push_back(CPoint(x, y));
+	}
+	else {
+		int x = (point.x - Draw_aera.left) / zoom_factor;
+		int y = (point.y - Draw_aera.top) / zoom_factor;
+		m_points.insert(m_points.begin() + pos_point, CPoint(x, y));
+		pos_point = -1;
+	}
 	/*
 	CString test;
 	test.Format(_T("%d,%d"), x, y);
@@ -205,19 +213,48 @@ void ImageViewer::do_move(int x, int y)
 void ImageViewer::OnMButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
-	std::vector<CPoint>::iterator iter;
-	iter = m_points.begin();
-	for (; iter != m_points.end();)
-	{
-		int x = (*iter).x * zoom_factor + Draw_aera.left;
-		int y = (*iter).y * zoom_factor + Draw_aera.top;
-		if (abs(x - point.x) <= 10 && abs(y - point.y) <= 10)
+	if (pos_point == -1) {
+		int i = 0;
+		std::vector<CPoint>::iterator iter;
+		iter = m_points.begin();
+		for (; iter != m_points.end();)
 		{
-			iter = m_points.erase(iter);
-			Invalidate();
+			int x = (*iter).x * zoom_factor + Draw_aera.left;
+			int y = (*iter).y * zoom_factor + Draw_aera.top;
+			if (abs(x - point.x) <= 10 && abs(y - point.y) <= 10)
+			{
+				iter = m_points.erase(iter);
+				pos_point = i;
+				Invalidate();
+			}
+			else {
+				i++;
+				iter++;
+			}
 		}
-		else
-			iter++;
+	}
+	else {
+		int res = AfxMessageBox(L"Please place a point before you remove next point.\nClick OK to force remove this point.", MB_ICONEXCLAMATION | MB_OKCANCEL);
+		if (res == IDOK) {
+			int i = 0;
+			std::vector<CPoint>::iterator iter;
+			iter = m_points.begin();
+			for (; iter != m_points.end();)
+			{
+				int x = (*iter).x * zoom_factor + Draw_aera.left;
+				int y = (*iter).y * zoom_factor + Draw_aera.top;
+				if (abs(x - point.x) <= 10 && abs(y - point.y) <= 10)
+				{
+					iter = m_points.erase(iter);
+					pos_point = i;
+					Invalidate();
+				}
+				else {
+					i++;
+					iter++;
+				}
+			}
+		}
 	}
 	CDialogEx::OnMButtonDown(nFlags, point);
 }

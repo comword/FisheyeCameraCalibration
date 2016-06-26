@@ -8,6 +8,9 @@
 #include "afxdialogex.h"
 #include "CV_calibrate.h"
 #include "Cali_options.h"
+#include "Stero_cali_diag.h"
+#include "Transcode.h"
+#include <vector>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -71,6 +74,7 @@ BEGIN_MESSAGE_MAP(CCameraCalibrateDlg, CDialogEx)
 	ON_BN_CLICKED(ID_DOCALIBRATE, &CCameraCalibrateDlg::OnBnClickedDocalibrate)
 	ON_BN_CLICKED(ID_LOAD_CONF, &CCameraCalibrateDlg::OnBnClickedLoadConf)
 	ON_BN_CLICKED(ID_PROC_PICS, &CCameraCalibrateDlg::OnBnClickedProcPics)
+	ON_BN_CLICKED(ID_STEREO_CALI, &CCameraCalibrateDlg::OnBnClickedStereoCali)
 END_MESSAGE_MAP()
 
 
@@ -184,40 +188,42 @@ void CCameraCalibrateDlg::OnBnClickedDocalibrate()
 	for (auto &e : m_maps) {
 		cali->imagePoints.push_back(cali->conv_cornors2f(e.second));
 	}
-	for (auto &e : m_maps) {
-		CString filename = e.first;
-		int nLength = WideCharToMultiByte(CP_ACP, 0, filename, filename.GetLength(), NULL, 0, NULL, NULL);
-		char *pBuffer = new char[nLength + 1];
-		WideCharToMultiByte(CP_ACP, 0, filename, filename.GetLength(), pBuffer, nLength, NULL, NULL);
-		pBuffer[nLength] = 0;
-		cv::Mat view = cv::imread(pBuffer, 1);
-		if (view.empty())
-			break;
-		cali->imageSize = view.size();
-		cali->boardSize.height = board_h;
-		cali->boardSize.width = board_w;
-		vector<Point2f> pointbuf = cali->conv_cornors2f(e.second);
-		cv::drawChessboardCorners(view, cali->boardSize, Mat(pointbuf), true);
-		string msg = "Press 's' to start";
-		int baseLine = 0;
-		Size textSize = getTextSize(msg, 1, 1, 1, &baseLine);
-		Point textOrigin(view.cols - 2 * textSize.width - 10, view.rows - 2 * baseLine - 10);
-		putText(view, msg, textOrigin, 1, 1,Scalar(0, 255, 255));
-		imshow("Calibration", view);
-		int key = 0xff & waitKey();
-		if ((key & 255) == 27)
-			break;
-		if (key == 's') {
-			CString strFileName = filename.Mid(filename.ReverseFind('\\') + 1);
-			strFileName += L".yaml";
-			CString outputFilename = Config_directory + L"\\" + strFileName;
-			cali->runAndSave(outputFilename, cali->imagePoints, cali->imageSize,
-				cali->boardSize, CHESSBOARD, cali->squareSize, cali->aspectRatio,
-				cali->flags, cali->cameraMatrix, cali->distCoeffs,
-				true, true);
-		}
+	CString filename = m_maps.begin()->first;
+	int nLength = WideCharToMultiByte(CP_ACP, 0, filename, filename.GetLength(), NULL, 0, NULL, NULL);
+	char *pBuffer = new char[nLength + 1];
+	WideCharToMultiByte(CP_ACP, 0, filename, filename.GetLength(), pBuffer, nLength, NULL, NULL);
+	pBuffer[nLength] = 0;
+	cv::Mat view = cv::imread(pBuffer, 1);
+	if (view.empty())
+		return;
+	cali->imageSize = view.size();
+	cali->boardSize.height = board_h;
+	cali->boardSize.width = board_w;
+	vector<Point2f> pointbuf = cali->conv_cornors2f(m_maps.begin()->second);
+	cv::drawChessboardCorners(view, cali->boardSize, Mat(pointbuf), true);
+	string msg = "Press 's' to start";
+	int baseLine = 0;
+	Size textSize = getTextSize(msg, 1, 1, 1, &baseLine);
+	Point textOrigin(view.cols - 2 * textSize.width - 10, view.rows - 2 * baseLine - 10);
+	putText(view, msg, textOrigin, 1, 1,Scalar(0, 255, 255));
+	imshow("Calibration", view);
+	int key = 0xff & waitKey();
+	if ((key & 255) == 27)
+		return;
+	if (key == 's') {
+		CString strFileName = filename.Mid(filename.ReverseFind('\\') + 1);
+		strFileName += L".yaml";
+		CString outputFilename;
+		if(Config_directory.Right(1) == L"\\")
+			outputFilename = Config_directory + strFileName;
+		else
+			outputFilename = Config_directory + L"\\" + strFileName;
+		cali->runAndSave(outputFilename, cali->imagePoints, cali->imageSize,
+			cali->boardSize, CHESSBOARD, cali->squareSize, cali->aspectRatio,
+			cali->flags, cali->cameraMatrix, cali->distCoeffs,
+			true, true);
 	}
-	Mat view, rview, map1, map2;
+	Mat rview, map1, map2;
 	initUndistortRectifyMap(cali->cameraMatrix, cali->distCoeffs, Mat(),
 		getOptimalNewCameraMatrix(cali->cameraMatrix, cali->distCoeffs, cali->imageSize, 1, cali->imageSize, 0),
 		cali->imageSize, CV_16SC2, map1, map2);
@@ -230,7 +236,7 @@ void CCameraCalibrateDlg::OnBnClickedDocalibrate()
 		view = imread(pBuffer, 1);
 		if (view.empty())
 			continue;
-		//undistort( view, rview, cameraMatrix, distCoeffs, cameraMatrix );
+		//undistort( view, rview, cameraMatrix, distCoeffs, cameraMatrix);
 		remap(view, rview, map1, map2, INTER_LINEAR);
 		imshow("Calibration", rview);
 		int c = 0xff & waitKey();
@@ -300,6 +306,43 @@ void CCameraCalibrateDlg::OnBnClickedProcPics()
 	}
 	else
 	{
+		return;
+	}
+}
+
+
+void CCameraCalibrateDlg::OnBnClickedStereoCali()
+{
+	int pairs = 0;
+	Stero_cali_diag m_dia;
+	std::vector<std::string> imglist;
+again:
+	if (m_dia.DoModal() == IDOK) {
+		static int cont = 1;
+		//if (pairs == 0)
+		pairs = _ttoi(m_dia.m_pairs);
+		if (pairs < 2) {
+			AfxMessageBox(_T("Error: too little pairs to run the calibration\n"));
+			return;
+		}
+		imglist.push_back(UnicodeToUTF8(m_dia.m_left_img_path.GetBuffer()));
+		imglist.push_back(UnicodeToUTF8(m_dia.m_right_img_path.GetBuffer()));
+		m_dia.m_left_img_path.ReleaseBuffer();
+		m_dia.m_right_img_path.ReleaseBuffer();
+		Size img;
+		cali->read_board_size_from_conf(UnicodeToUTF8(m_dia.left_conf.GetBuffer()),img);
+		m_dia.left_conf.ReleaseBuffer();
+		if (cont < pairs) {
+			cont++;
+			m_dia.left_conf = L"";
+			m_dia.m_left_img_path = L"";
+			m_dia.m_right_img_path = L"";
+			goto again;
+		}
+		cali->StereoCalib(imglist,img,true,true,true);
+		cali->save_stereo_conf(UnicodeToUTF8(m_dia.save_path.GetBuffer()), cali->stereo_res);
+		m_dia.save_path.ReleaseBuffer();
+	} else {
 		return;
 	}
 }

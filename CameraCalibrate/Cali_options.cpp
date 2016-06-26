@@ -9,7 +9,8 @@
 #include "CameraCalibrateDlg.h"
 #include "CV_calibrate.h"
 
-
+using namespace std;
+using namespace cv;
 // Cali_options dialog
 
 IMPLEMENT_DYNAMIC(Cali_options, CDialogEx)
@@ -191,9 +192,9 @@ void Cali_options::OnBnClickedAutocorners()
 		cv::Mat viewGray;
 		cvtColor(view, viewGray, COLOR_BGR2GRAY);
 		found = findChessboardCorners(view, cali->boardSize, points, CALIB_CB_ADAPTIVE_THRESH | CALIB_CB_FAST_CHECK | CALIB_CB_NORMALIZE_IMAGE);
-		cornerSubPix(viewGray, points, Size(11, 11),
-			Size(-1, -1), TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 30, 0.1));
 		if (found) {
+			cornerSubPix(viewGray, points, Size(11, 11),
+				Size(-1, -1), TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 30, 0.1));
 			vector<CPoint> res;
 			vector<Point2f>::iterator itera;
 			itera = points.begin();
@@ -203,6 +204,9 @@ void Cali_options::OnBnClickedAutocorners()
 					float((*itera).y)));
 			}
 			m_maps[*iter] = res;
+		}
+		else {
+			AfxMessageBox(_T("Corners cannot be found in chessboard. Please try it manually."));
 		}
 	}
 }

@@ -28,6 +28,7 @@ protected:
 	RECT w_rect;
 	CImage image;
 	bool moving = false;
+	int pos_point = -1;
 	CPoint rec_mouse;
 	float zoom_factor = 1.0f;
 	DECLARE_MESSAGE_MAP()

@@ -41,4 +41,5 @@ public:
 	virtual BOOL DestroyWindow();
 	afx_msg void OnBnClickedLoadConf();
 	afx_msg void OnBnClickedProcPics();
+	afx_msg void OnBnClickedStereoCali();
 };
